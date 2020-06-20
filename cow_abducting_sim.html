@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Cow Abducting Sim</title>
+    <style>* { padding: 0; margin: 0; } canvas { background: #eeeeee; display: block; margin: 0 auto; }</style>
+</head>
+<body>
+    
+    <canvas id="myCanvas" width="800" height="600"></canvas>
+    
+    <!--
+        var randomCowGoalPosition = function(cowWidth, cowHeight) {
+            return [
+            Math.random(cowWidth/2, bg.size[0] - cowWidth/2),
+            bg.size[1] - 100 / 2 - cowHeight / 2,
+            ];
+        };
+        
+        var makeCow = function(startX, startY, startWidth, startHeight) {
+            var cow = {
+                "pos" : [ startX, startY ],
+                "size" : [ startWidth, startHeight ],
+                "v" : [ 0, 0],
+                "maxV" : [ 3, 5 ],
+                "goal" : [ startX, startY ],
+                "update" : function() {
+                    // Move with previous speed
+                    for (var i = 0; i < 2; i++) {
+                        // Move in current direction
+                        this.pos[i] = this.pos[i] + this.v[i];
+                        if (this.pos[i] - this.size[i] / 2 < 0) {
+                            this.pos[i] = this.size[i] / 2;
+                            this.v[i] = 0;
+                        }
+                        if (this.pos[i] + this.size[i] / 2 > bg.size[i]) {
+                            this.pos[i] = bg.size[i] - this.size[i] / 2;
+                            this.v[i] = 0;
+                        }
+                    }
+                    
+                    // Update speed
+                    for (var i = 0; i < 2; i++) {
+                        var err = this.goal[i] - this.pos[i];
+                        if (err < 0) {
+                            if (this.v[i] > - this.maxV[i]) {
+                                this.v[i] = this.v[i] - 1;
+                            }
+                        } else {
+                            if (this.v[i] < this.maxV[i]) {
+                                this.v[i] = this.v[i] + 1;
+                            }
+                        }
+                    }
+                    
+                    var xSatisfied = abs(this.goal[0] - this.pos[0]) < this.size[0]/2;
+                    var ySatisfied = abs(this.goal[1] - this.pos[1]) < this.size[1]/2;
+                    if (xSatisfied && ySatisfied) {
+                        this.goal = randomCowGoalPosition(this.size[0], this.size=
+                        [1]);
+                    }
+                },
+                "draw": function(view) {
+                    var x = this.pos[0] - view[0];
+                    var y = this.pos[1] - view[1];
+                    
+                    //cocpit
+                    fill(95, 199, 199);
+                    ellipse(x, y - this.size[1] / 2, this.size[0] * 3 / 4, this.size[1] );
+                    //body
+                    fill(230, 230, 230);
+                    ellipse(x, y, this.size[0], this.size[1]);
+                    //body
+                    fill(222, 22, 22);
+                    ellipse(x, y, this.size[0], 2);
+                }
+            };
+            return cow;
+        };
+        
+        for (var i = 0; i < 10; i++) {
+            var cowWidth = Math.random(50, 100);
+            var cowHeight = cowWidth/2;
+            var cowStartPos = randomCowGoalPosition(cowWidth, cowHeight);
+            cows.push(makeCow(cowStartPos[0], cowStartPos[1],
+            cowWidth,
+            cowHeight
+            ));
+        }
+        for (var i = 0; i < cows.length; i++) {
+            bg.objects.push(cows[i]);
+        }
+        
+        // debug(bg);
+        
+        mouseClicked = function() {
+            ship.beams.push(ship.beamStartSize);
+        };
+        
+        draw = function() {
+            ship.goal = [mouseX + bg.view[0], mouseY + bg.view[1]];
+            
+            // Simulation
+            bg.update();
+            
+            // Drawing
+            bg.draw();
+            
+            return;
+        };
+    -->
+    <script>
+        var canvas = document.getElementById("myCanvas");
+        var ctx = canvas.getContext("2d");
+        var ballRadius = 10;
+        
+        var x = canvas.width/2;
+        var y = canvas.height-30;
+        var dx = 2;
+        var dy = -2;
+        var paddleHeight = 10;
+        var paddleWidth = 75;
+        var paddleX = (canvas.width-paddleWidth)/2;
+        var rightPressed = false;
+        var leftPressed = false;
+        var brickRowCount = 5;
+        var brickColumnCount = 3;
+        var brickWidth = 75;
+        var brickHeight = 20;
+        var brickPadding = 10;
+        var brickOffsetTop = 30;
+        var brickOffsetLeft = 30;
+        var score = 0;
+        var lives = 3;
+        
+        function ellipse (x, y, w, h) {
+            ctx.beginPath();
+            ctx.ellipse(x, y, w, h, 0, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.stroke();
+            ctx.closePath();
+        };
+        function triangle (x1, y1, x2, y2, x3, y3) {
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.lineTo(x3, y3);
+            ctx.lineTo(x1, y1);
+            ctx.fill();
+            ctx.stroke();
+            ctx.closePath();
+        };
+        function fill (r, g, b, a) {
+            if (a) {
+                ctx.fillStyle =`rgb(${r}, ${g}, ${b}, ${a})`;
+            } else {
+                ctx.fillStyle =`rgb(${r}, ${g}, ${b})`;
+            }
+        }
+        function stroke (r, g, b, a) {
+            ctx.strokeStyle =`rgb(${r}, ${g}, ${b}, ${a})`;
+        }
+        function rect (x, y, w, h) {
+            ctx.beginPath();
+            ctx.rect(x, y, w, h);
+            ctx.fill();
+            ctx.closePath();
+        }
+        var world = {
+            "size" : [2000, 1000],
+            "objects" : [],
+            "view" : [0, 0, canvas.width, canvas.height],
+            "focus" : null,
+            handleMouseMove : function(relativeX, relativeY) {
+                var x = relativeX + this.view[0];
+                var y = relativeY + this.view[1];
+                
+                for (var i = 0; i < this.objects.length; i++) {
+                    if (this.objects[i].handleMouseMove) {
+                        this.objects[i].handleMouseMove(x, y);
+                    }
+                }
+                
+                return;
+            },
+            handleClick : function(relativeX, relativeY) {
+                var x = relativeX + this.view[0];
+                var y = relativeY + this.view[1];
+                
+                for (var i = 0; i < this.objects.length; i++) {
+                    if (this.objects[i].handleClick) {
+                        this.objects[i].handleClick(x, y);
+                    }
+                }
+                
+                return;
+            },
+            "draw": function() {
+                // console.log("drawing world");
+                
+                // Update viewport to keep ship in center 1/2 of screen if possible
+                for (var i = 0; i < 2; i++) {
+                    var max = this.view[i+2];
+                    var goal = this.focus.pos[i] - max/2;
+                    var err = this.view[i] - goal;
+                    if (err > max/4) {
+                        this.view[i] = goal + max/4;
+                    }
+                    if (err < -max/4) {
+                        this.view[i] = goal - max/4;
+                    }
+                    if (this.view[i] < 0) {
+                        this.view[i] = 0;
+                    }
+                    if (this.view[i] > this.size[i] - this.view[i+2]) {
+                        this.view[i] = this.size[i] - this.view[i+2];
+                    }
+                }
+                var xOffset = -this.view[0];
+                var yOffset = -this.view[1];
+                
+                // // Static background
+                // // background(0, 0, 0);
+                // ctx.fillStyle = "#000";
+                // rect(0, 0, this.size[0], this.size[1]);
+                // stroke(0, 0, 0);
+                // // Ground
+                // fill(52, 143, 52);
+                // rect(0 + xOffset, this.size[1] - 100 + yOffset, this.size[0], 100);
+                
+                for (var i = 0; i < this.objects.length; i++) {
+                    if (this.objects[i].draw) {
+                        this.objects[i].draw(this.view);
+                    }
+                }
+                
+                return;
+            },
+            "update" : function() {
+                for (var i = 0; i < this.objects.length; i++) {
+                    if (this.objects[i].update) {
+                        this.objects[i].update();
+                    }
+                }
+                return;
+            }
+        };
+        function createStarField(x, y, w, h, numStars) {
+            var starField = {
+                pos : [x, y],
+                "size" : [w, h],
+                "stars" : [],
+                "draw": function(view) {                
+                    var xOffset = this.pos[0] - view[0];
+                    var yOffset = this.pos[1] - view[1];
+                    
+                    ctx.fillStyle = "#000";
+                    ctx.fillRect(0+xOffset, 0+yOffset, this.size[0], this.size[1]);
+                    for (var i = 0; i < this.stars.length; i++) {
+                        var star = this.stars[i];
+                        var visible = (
+                            (star[0] + xOffset + star[2] > 0) &&
+                            (star[0] + xOffset - star[2] < canvas.width) &&
+                            (star[1] + yOffset + star[2] > 0) &&
+                            (star[1] + yOffset - star[2] < canvas.height)
+                        );
+                        if (visible) {
+                            ctx.beginPath();
+                            ctx.fillStyle = "#eee";
+                            ctx.arc(star[0]+ xOffset, star[1] + yOffset, star[2], 0, 2 * Math.PI);
+                            ctx.fill();
+                            ctx.closePath();
+                        }
+                    }
+                    return;
+                }
+            };
+            for (var i = 0; i < numStars; i++) {
+                starField.stars.push([w * Math.random(), h * Math.random(), 5 * Math.random()]);
+            }
+            return starField;
+        }
+        world.objects.push(createStarField(0, 0, world.size[0], world.size[1], world.size[0] * world.size[1] / 10000));
+
+        function createGroundBackground(x, y, w, h) {
+            var obj = {
+                pos   : [x, y],
+                size  : [w, h],
+                draw  : function(view) {                
+                    var xOffset = this.pos[0] - view[0];
+                    var yOffset = this.pos[1] - view[1];
+                    
+                    ctx.fillStyle = "#0e0";
+                    ctx.fillRect(0+xOffset, 0+yOffset, this.size[0], this.size[1]);
+                    return;
+                }
+            };
+            return obj;
+        }
+        // Bottom 10% of world is ground
+        world.objects.push(createGroundBackground(0, world.size[1] - 0.1 * world.size[1], world.size[0], 0.1 * world.size[1]));
+
+        var updatePhysicsSub = function() {
+            // Move with previous speed
+            for (var i = 0; i < 2; i++) {
+                // Move in current direction
+                this.pos[i] = this.pos[i] + this.v[i];
+                if (this.pos[i] - this.size[i] / 2 < 0) {
+                    this.pos[i] = this.size[i] / 2;
+                    this.v[i] = 0;
+                }
+                if (this.pos[i] + this.size[i] / 2 > world.size[i]) {
+                    this.pos[i] = world.size[i] - this.size[i] / 2;
+                    this.v[i] = 0;
+                }
+            }
+            
+            // Update speed
+            for (var i = 0; i < 2; i++) {
+                this.v[i] = this.v[i] + this.a[i];
+            }
+
+            return;
+        };
+
+        var ship = {
+            "pos"  : [500, 500],
+            "size" : [75, 40],
+            "v"    : [0, 0],
+            "a"    : [0, 0],
+            "maxV" : [5, 5],
+            "goal" : [world.size[2]/2, world.size[2]/2],
+            "jets" : [0, 0, 0],
+            "beams" : [],
+            "beamStartSize" : 50,
+            "beamLength" : 200,
+            "draw": function(view) {
+                // console.log("drawing ship");
+                
+                var x = this.pos[0] - view[0];
+                var y = this.pos[1] - view[1];
+                
+                // Draw beams behind body
+                for (var i = 0; i < this.beams.length; i++) {
+                    // transparent green beam
+                    ctx.fillStyle = "#00ff0080";
+                    triangle(x, y,
+                    x-this.beams[i], y + this.beamLength,
+                    x+this.beams[i], y+ this.beamLength);
+                }
+                
+                //cocpit
+                fill(95, 199, 199);
+                ellipse(x, y - this.size[1] / 2, this.size[0] * 3 / 4, this.size[1] * 5 / 4);
+                ctx.beginPath();
+                ctx.ellipse(x, y - this.size[1] / 2, this.size[0] * .75, this.size[1] * 1.25, 0, 0.3 * Math.PI, 1.7 * Math.PI);
+                ctx.fill();
+                ctx.stroke();
+                ctx.closePath();
+
+                //body
+                fill(230, 230, 230);
+                ellipse(x, y, this.size[0], this.size[1]);
+                ctx.beginPath();
+                ctx.ellipse(x, y, this.size[0], this.size[1], 0, 0.3 * Math.PI, 1.7 * Math.PI);
+                ctx.fill();
+                ctx.stroke();
+                ctx.closePath();
+                //body stripe
+                fill(222, 22, 22);
+                ellipse(x, y, this.size[0], 2);
+                
+                // Draw jets last so we can see them
+                if (this.jets[0] > 0) {
+                    // to do: make transparancy a function of force
+                    ctx.fillStyle = "#ff333380";
+                    triangle(x, y,
+                        x-this.size[0], y + this.size[1] / 5,
+                        x-this.size[0], y - this.size[1] / 5);
+                }
+                if (this.jets[1] > 0) {
+                    // to do: make transparancy a function of force
+                    ctx.fillStyle = "#ff333380";
+                    triangle(x, y,
+                        x-this.size[0] / 5, y + this.size[1],
+                        x+this.size[0] / 5, y + this.size[1]);
+                }
+                if (this.jets[2] > 0) {
+                    // to do: make transparancy a function of force
+                    ctx.fillStyle = "#ff333380";
+                    triangle(x, y,
+                        x+this.size[0], y + this.size[1] / 5,
+                        x+this.size[0], y - this.size[1] / 5);
+                }
+            },
+            "updatePhysics" : updatePhysicsSub,
+            "update" : function() {
+                
+                // Fire horizontal jets toward goal
+                if (this.v[0] < -this.maxV[0]) {
+                    // Emergency shut off
+                    this.jets[2] = 0;
+                } else {
+                    var xErr = this.goal[0] - this.pos[0];
+                    if (xErr < 3 * this.v[0]) {
+                        // Accellerate toward goal
+                        this.jets[2] = 1;
+                    } else {
+                        // Coast
+                        this.jets[2] = 0;
+                    }
+                }
+
+                if (this.v[0] > this.maxV[0]) {
+                    // Emergency shut off
+                    this.jets[0] = 0;
+                } else {
+                    var xErr = this.goal[0] - this.pos[0];
+                    if (xErr > 3 * this.v[0]) {
+                        // Accellerate toward goal
+                        this.jets[0] = 1;
+                    } else {
+                        // Coast
+                        this.jets[0] = 0;
+                    }
+                }
+                
+                // Fire vertical jets toward goal
+                if (this.v[0] <= -this.maxV[0]) {
+                    // Emergency thruster shut off
+                    this.jets[1] = 0;
+                } else {
+                    var yErr = this.goal[1] - this.pos[1];
+                    if (yErr < 3 * this.v[1]) {
+                        // full power
+                        this.jets[1] = 3;
+                    } else {
+                        this.jets[1] = 0;
+                    }
+                }
+                
+                // Adjust acceleration
+                this.a[0] = -0.1*this.v[0] + this.jets[0] - this.jets[2];
+                this.a[1] = 1 - 0.1*this.v[1] - this.jets[1];
+                
+                // Move based on accelleration
+                this.updatePhysics();
+
+                // Update tractor beams
+                for (var i = 0; i < this.beams.length; i++) {
+                    this.beams[i] = this.beams[i] - 1;
+                }
+                // Delete empty beams
+                var beamNum = 0;
+                while (beamNum < this.beams.length) {
+                    if (this.beams[beamNum] <= 0) {
+                        this.beams.splice(beamNum, 1);
+                    } else {
+                        beamNum = beamNum + 1;
+                    }
+                }
+
+                // Try to pick up cows
+                for (var i = 0; i < world.objects.length; i++) {
+                    // Check if mob is in beam
+                    if (world.objects[i].v) {
+                        var mob = world.objects[i];
+                        if (mob.pos[1] > this.pos[1] && mob.pos[1] < this.pos[1] + this.beamLength) {
+                            // Could be in beam
+                            for (var j = 0; j < this.beams.length; j++) {
+                                var beamWidth = this.beams[j];
+                                if (mob.pos[0] > this.pos[0] - beamWidth &&
+                                mob.pos[0] < this.pos[0] + beamWidth
+                                ) {
+                                    // In beam
+                                    mob.v[1] = mob.v[1] - 1;
+                                }
+                            }
+                        }
+                    }
+                }                
+            },
+            handleMouseMove : function(x, y) {
+                this.goal = [x, y];   
+                return;
+            },
+            handleClick : function(x, y) {
+                this.beams.push(this.beamStartSize);
+                return;
+            }
+        };
+        world.objects.push(ship);
+        world.focus = ship;
+        
+        var bricks = [];
+        for(var c=0; c<brickColumnCount; c++) {
+            bricks[c] = [];
+            for(var r=0; r<brickRowCount; r++) {
+                bricks[c][r] = { x: 0, y: 0, status: 1 };
+            }
+        }
+        
+        document.addEventListener("keydown", keyDownHandler, false);
+        document.addEventListener("keyup", keyUpHandler, false);
+        document.addEventListener("mousemove", mouseMoveHandler, false);
+        document.addEventListener("click", clickHandler, false);
+        
+        function keyDownHandler(e) {
+            if(e.keyCode == 39) {
+                rightPressed = true;
+            }
+            else if(e.keyCode == 37) {
+                leftPressed = true;
+            }
+        }
+        function keyUpHandler(e) {
+            if(e.keyCode == 39) {
+                rightPressed = false;
+            }
+            else if(e.keyCode == 37) {
+                leftPressed = false;
+            }
+        }
+        function mouseMoveHandler(e) {
+            var relativeX = e.clientX - canvas.offsetLeft;
+            var relativeY = e.clientY - canvas.offsetTop;
+            
+            world.handleMouseMove(relativeX, relativeY);
+        }
+        function clickHandler(e) {
+            var relativeX = e.clientX - canvas.offsetLeft;
+            var relativeY = e.clientY - canvas.offsetTop;
+            
+            world.handleClick(relativeX, relativeY);
+        }
+        
+        function drawScore() {
+            ctx.font = "16px Arial";
+            ctx.fillStyle = "#0095DD";
+            ctx.fillText("Score: "+score, 8, 20);
+        }
+        function drawLives() {
+            ctx.font = "16px Arial";
+            ctx.fillStyle = "#0095DD";
+            ctx.fillText("Lives: "+lives, canvas.width-65, 20);
+        }
+        
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            world.update();
+            world.draw();
+            
+            requestAnimationFrame(draw);
+        }
+        
+        draw();
+    </script>
+    
+</body>
+</html>
